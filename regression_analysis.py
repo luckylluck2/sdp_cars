@@ -1,81 +1,59 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import norm
 import os
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, mean_squared_log_error
+
+
 
 # Load recipes data
 
 data_folder = './data'
-recipes_file = 'recipes.parquet'
+recipes_file = 'cleaned_data.parquet'
 
-og_data = pd.read_parquet(os.path.join(data_folder, recipes_file))
-og_data.head(5)
+cars_data = pd.read_parquet(os.path.join(data_folder, recipes_file))
 
-# Select appropriate columns
+cars_prices = cars_data['price']
+cars_data.drop(columns='price', inplace=True)
 
-print('All columns:', og_data.columns.to_list())
+X_train, X_test, y_train, y_test = train_test_split(cars_data, cars_prices, test_size=0.15, random_state=1)
 
-required_columns = ['RecipeId', 'CookTime', 'PrepTime', 'TotalTime',
-                    'AggregatedRating', 'ReviewCount', 'Calories', 
-                    'FatContent', 'SaturatedFatContent', 'CholesterolContent', 'SodiumContent', 
-                    'CarbohydrateContent', 'FiberContent', 'SugarContent', 'ProteinContent', 'RecipeServings']
+scaler = StandardScaler().fit(X_train)
+X_train_transformed = scaler.transform(X_train)
+X_test_transformed  = scaler.transform(X_test)
 
-data = og_data[required_columns]
 
-# Remove rows with missing values
+lin_mod = LinearRegression().fit(X_train_transformed, y_train)
 
-print('Number of rows:', len(data))
-print('Number of rows without None values:', len(data.dropna()))
+y_pred = lin_mod.predict(X_test_transformed)
 
-data = data.dropna()
+#for negative predictions, set to 1 USD
+y_pred[y_pred <= 0] = 1
 
-data.head(5)
 
-def timestring_to_minutes(timestring):
-    """
-    Convert the timestring in the columns 'CookTime', 'PrepTime' or 'TotalTime' to minutes.
-    Example: 'PT24H45M' -> 24 * 60 + 45
-    
-    Args:
-        timestring (str): String indicating a time duration
-        
-    Returns:
-        total_time (float): Number of minutes
-    """
-    if type(timestring) is str:
-        # Remove leading 'PT'
-        timestring = timestring.replace('PT', '')
-        
-        # Determine the number of hours from the remaining string before 'H'
-        if 'H' in timestring:
-            timestring_h = timestring.split('H')
-            hours = int(timestring_h[0])
-            
-            # Consider only the part after 'H' for the minutes
-            timestring = timestring_h[1]
-        else:
-            hours = 0
-            
-        # Determine the number of minutes from the remaining string before 'M'
-        if 'M' in timestring:
-            minutes = int(timestring.split('M')[0])
-        else:
-            minutes = 0
-        
-        # Calculate the total time duration in minutes
-        total_time = hours * 60 + minutes
-        return total_time
-    else:
-        return None
+rmse = np.sqrt(mean_squared_error(y_pred, y_test))
+msle = mean_squared_log_error(y_pred, y_test)
+print(f'rmse: {rmse}, msle: {msle}')
+np.array(np.round(y_pred[:10]))
+np.array(y_test.iloc[:10])
 
-data['CookTime'] = data['CookTime'].map(timestring_to_minutes)
-data['PrepTime'] = data['PrepTime'].map(timestring_to_minutes)
-data['TotalTime'] = data['TotalTime'].map(timestring_to_minutes)
-data = data.astype({'RecipeId': 'int32', 'CookTime': 'int32',
-                    'PrepTime': 'int32', 'TotalTime': 'int32'})
+c = [i for i in range(len(y_pred))]
+fig = plt.figure()
+plt.plot(c,y_test-y_pred, color="blue", linewidth=0.5, linestyle="-")
+fig.suptitle('Error Terms', fontsize=20)              # Plot heading 
+plt.xlabel('Index', fontsize=18)                      # X-label
+plt.ylabel('ytest-ypred', fontsize=16)                # Y-label
+plt.show()
 
-print(data.dtypes)
-data.head(5)
+errors = y_test - y_pred
 
-print(sum((data['Calories'] < 10000) & ((data['PrepTime'] <= 120) & (data['CookTime'] <= 180))))
-temp_filter = (data['Calories'] < 10000) & (data['PrepTime'] <= 120) & (data['CookTime'] <= 180) & \
-                (data['SodiumContent'] <= 5000)
+(mu, sigma) = norm.fit(errors[np.abs(errors) <= 10000])
+
+n, bins, patches = plt.hist(errors, range = (-10000, 10000), bins = 100, density = True, color='green')
+y = norm.pdf( bins, mu, sigma)
+l = plt.plot(bins, y, 'r--', linewidth=1)
+plt.show()
