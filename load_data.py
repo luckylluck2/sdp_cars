@@ -3,9 +3,10 @@ import pandas as pd
 import os
 
 data_folder = './data'
-recipes_file = 'recipes.parquet'
+vehicles_file = 'vehicles.csv'
+vehicles_parquet = 'vehicles.parquet'
 
-data = pd.read_parquet(os.path.join(data_folder, recipes_file))
+data = pd.read_csv(os.path.join(data_folder, vehicles_file))
 print(data.head())
 
-print('\n'.join(data['RecipeInstructions'][0]))
+data.to_parquet(os.path.join(data_folder, vehicles_parquet))
