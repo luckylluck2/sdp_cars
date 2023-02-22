@@ -47,7 +47,9 @@ og_data['odometer'][og_data['odometer'] == 0] = 1
 og_data['yearSquared'] = og_data['year']**2     #to explain behaviour with extremele new/old cars
 og_data['logOdometer'] = np.log10(og_data['odometer'])
 
-
+#impute missing years with mean values:
+og_data['year'] = og_data['year'].fillna(og_data['year'].mean(skipna=True))
+og_data['yearSquared'] = og_data['yearSquared'].fillna(og_data['yearSquared'].mean(skipna=True))
 
 #select only the wanted columns
 clean_data = og_data[required_columns]
