@@ -6,7 +6,7 @@ import os
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, mean_squared_log_error
+from sklearn.metrics import mean_squared_error
 
 
 
@@ -36,8 +36,7 @@ y_pred[y_pred <= 0] = 1
 
 
 rmse = np.sqrt(mean_squared_error(y_pred, y_test))
-msle = mean_squared_log_error(y_pred, y_test)
-print(f'rmse: {rmse}, msle: {msle}')
+print(f'rmse: {rmse}')
 np.array(np.round(y_pred[:10]))
 np.array(y_test.iloc[:10])
 
@@ -57,3 +56,5 @@ n, bins, patches = plt.hist(errors, range = (-10000, 10000), bins = 100, density
 y = norm.pdf( bins, mu, sigma)
 l = plt.plot(bins, y, 'r--', linewidth=1)
 plt.show()
+
+print(f'rmse: {rmse}')
