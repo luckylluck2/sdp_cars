@@ -2,37 +2,37 @@ import numpy as np
 import pandas as pd
 import os
 
-# Load recipes data
+# Load vehicles data
 
 clean_data_folder = './data'
-recipes_file = 'recipes.parquet'
+vehicles_file = 'vehicles.parquet'
 cleaned_file = 'cleaned_data.parquet'
 
-og_data = pd.read_parquet(os.path.join(clean_data_folder, recipes_file))
+og_data = pd.read_parquet(os.path.join(clean_data_folder, vehicles_file))
 
-#Feature engineering:
-#Avg. length instructions & amount rows instruction
-avgLength, noInstructions = [], []
-for index, recipe in og_data.iterrows():
-    instructions = recipe['RecipeInstructions']
-    noInstructions.append(len(instructions))
-    avgLength.append(len(''.join(instructions))/max(len(instructions), 1))
+og_data.columns
 
-og_data['avgLength'] = avgLength
-og_data['noInstructions'] = noInstructions
 
 # Select appropriate columns
 
-required_columns = ['RecipeId', 'CookTime', 'PrepTime', 'TotalTime', 'RecipeCategory',
-                    'AggregatedRating', 'ReviewCount', 'Calories', 
-                    'FatContent', 'SaturatedFatContent', 'CholesterolContent', 'SodiumContent', 
-                    'CarbohydrateContent', 'FiberContent', 'SugarContent', 'ProteinContent',
-                    'avgLength', 'noInstructions']
+required_columns = ['price', 'year', 'manufacturer', 'condition', 'cylinders', 'fuel', 'odometer',
+                    'title_status', 'transmission', 'drive', 'size', 'type', 'paint_color']
 
 clean_data = og_data[required_columns]
 # Remove rows with missing values
 
-clean_data = clean_data.dropna()
+og_data['cylinders']
+
+def cylinders_to_numeric(cylinderstring):
+    """
+    Convert # cylinders as a string, to integer value
+    """
+    if ((cylinderstring == 'other') | (cylinderstring == None)): return None
+    else: return(int(cylinderstring.replace(' cylinders', '')))
+
+og_data['cylinders'] = og_data['cylinders'].map(cylinders_to_numeric)
+og_data['cylinders'].fillna(og_data['cylinders'].mean(skipna=True))
+
 
 def timestring_to_minutes(timestring):
     """
