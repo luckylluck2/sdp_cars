@@ -64,10 +64,15 @@ encoded_df = pd.DataFrame(encoded, columns=enc.get_feature_names_out())
 
 non_categorical_columns = ['price', 'year', 'odometer', 'cylinders', 'logOdometer', 'yearSquared']
 
+#indexing went 'wrong' somewhere
+clean_data.index = encoded_df.index
 
 clean_data = pd.concat([clean_data[non_categorical_columns].copy(), encoded_df], axis = 1)
 
 #clean_data.dtypes
+
+#some prices may be missing, drop these rows (better safe then sorry lol)
+clean_data = clean_data.iloc[np.where(~np.isnan(clean_data['price']))[0]]
 
 clean_data.to_parquet(os.path.join(clean_data_folder, cleaned_file))
 
