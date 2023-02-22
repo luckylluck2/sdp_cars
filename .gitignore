@@ -131,3 +131,6 @@ dmypy.json
 
 # csv data
 data/
+
+# data exploration
+explore_data.ipynb
