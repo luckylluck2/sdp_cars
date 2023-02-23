@@ -14,16 +14,56 @@ odometer_cutoffPoint = 400000   #in miles
 price_cutoffPoint = 500000      #in USD
 
 required_columns = ['price', 'year', 'manufacturer', 'condition', 'cylinders', 'fuel', 'odometer',
-                    'title_status', 'transmission', 'drive', 'size', 'type', 'paint_color', 
-                    'yearSquared', 'logOdometer']
+                    'title_status', 'transmission', 'drive', 'size', 'type', 'paint_color', 'lat', 'long']
 
 og_data = pd.read_parquet(os.path.join(clean_data_folder, vehicles_file))
 
-#drop rows with extremely large prices
-og_data.drop(np.where(og_data['price'] > price_cutoffPoint)[0], inplace=True)
+column_filters = {'price': {'min': 1000, 'max': 50000, 'exclude': [], 'impute': 'median'}, 
+                  'year': {'min': 2000, 'max': 2020, 'exclude': [], 'impute': 'median'}, 
+                  'manufacturer': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
+                  'condition': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
+                  'cylinders': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
+                  'fuel': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
+                  'odometer': {'min': 0, 'max': 300000, 'exclude': [], 'impute': 'median'},
+                  'title_status': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
+                  'transmission': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
+                  'drive': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
+                  'size': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
+                  'type': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
+                  'paint_color': {'min': None, 'max': None, 'exclude': [], 'impute': None},
+                  'lat': {'min': None, 'max': None, 'exclude': [], 'impute': 'median'},
+                  'long': {'min': None, 'max': None, 'exclude': [], 'impute': 'median'}}
+
+def take_subset(data, column, min_val=None, max_val=None, exclude_vals=None, impute=None):
+    new_data = data.copy()
+    old_length = len(new_data)
+    if impute is not None:
+        if impute == 'median':
+            new_data[column] = new_data[column].fillna(new_data[column].median(skipna=True))
+    if min_val is not None:
+        new_data = new_data[new_data[column] >= min_val]
+    if max_val is not None:
+        new_data = new_data[new_data[column] <= max_val]
+    if exclude_vals is not None:
+        if type(exclude_vals) == list:
+            for val in exclude_vals:
+                new_data = new_data[new_data[column] != val]
+        else:
+            new_data = new_data[new_data[column] != exclude_vals]
+    print(f'Filtered {column}, removed {old_length - len(new_data)} rows')
+    return new_data
+
+
+for column in column_filters:
+    
+    og_data = take_subset(og_data, column, 
+                       min_val=column_filters[column]['min'],
+                       max_val=column_filters[column]['max'],
+                       exclude_vals=column_filters[column]['exclude'],
+                       impute=column_filters[column]['impute'])
+
 
 # Select appropriate columns
-
 
 def cylinders_to_numeric(cylinderstring):
     """
@@ -36,21 +76,6 @@ og_data['cylinders'] = og_data['cylinders'].map(cylinders_to_numeric)
 #also, impute any missing values with the mean
 og_data['cylinders'] = og_data['cylinders'].fillna(og_data['cylinders'].mean(skipna=True))
 
-#Next, we ignore rows with unrealistic values. Any abnormally high values for specific columns are removed.
-#The odometer has some unrealistic values, so any value exceeding a threshold (set above) is set to be missing
-og_data['odometer'][og_data['odometer'] > odometer_cutoffPoint] = np.nan
-#and we impute missing values with the mean
-og_data['odometer'] = og_data['odometer'].fillna(og_data['odometer'].mean(skipna=True))
-
-og_data['odometer'][og_data['odometer'] == 0] = 1
-
-#we also add some additional features:
-og_data['yearSquared'] = og_data['year']**2     #to explain behaviour with extremele new/old cars
-og_data['logOdometer'] = np.log10(og_data['odometer'])
-
-#impute missing years with mean values:
-og_data['year'] = og_data['year'].fillna(og_data['year'].mean(skipna=True))
-og_data['yearSquared'] = og_data['yearSquared'].fillna(og_data['yearSquared'].mean(skipna=True))
 
 #select only the wanted columns
 clean_data = og_data[required_columns]
@@ -58,25 +83,20 @@ clean_data = og_data[required_columns]
 #ONE HOT ENCODING! WHOOP WHOOP!
 categorical_columns = ['manufacturer', 'condition', 'fuel', 'title_status', 'transmission',
                        'drive', 'size', 'type', 'paint_color'] 
-enc = OneHotEncoder(sparse=False).fit(clean_data[categorical_columns])
+enc = OneHotEncoder(sparse_output=False).fit(clean_data[categorical_columns])
 encoded = enc.transform(clean_data[categorical_columns])
 encoded_df = pd.DataFrame(encoded, columns=enc.get_feature_names_out()) 
 # encoded_df.columns.to_list()
 
-non_categorical_columns = ['price', 'year', 'odometer', 'cylinders', 'logOdometer', 'yearSquared']
+non_categorical_columns = ['price', 'year', 'odometer', 'cylinders']
 
 #indexing went 'wrong' somewhere
 clean_data.index = encoded_df.index
 
 clean_data = pd.concat([clean_data[non_categorical_columns].copy(), encoded_df], axis = 1)
 
-#clean_data.dtypes
-
-#some prices may be missing, drop these rows (better safe then sorry lol)
-clean_data = clean_data.iloc[np.where(~np.isnan(clean_data['price']))[0]]
-
 og_data[required_columns].to_parquet(os.path.join(clean_data_folder, cleaned_file_categorical))
 
 clean_data.to_parquet(os.path.join(clean_data_folder, cleaned_file))
 
-len(clean_data)
+print(len(clean_data))
