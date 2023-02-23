@@ -8,6 +8,7 @@ from sklearn.preprocessing import OneHotEncoder
 clean_data_folder = './data'
 vehicles_file = 'vehicles.parquet'
 cleaned_file = 'cleaned_data.parquet'
+cleaned_file_categorical = 'cleaned_data_categorical.parquet'
 
 odometer_cutoffPoint = 400000   #in miles
 price_cutoffPoint = 500000      #in USD
@@ -73,6 +74,8 @@ clean_data = pd.concat([clean_data[non_categorical_columns].copy(), encoded_df],
 
 #some prices may be missing, drop these rows (better safe then sorry lol)
 clean_data = clean_data.iloc[np.where(~np.isnan(clean_data['price']))[0]]
+
+og_data[required_columns].to_parquet(os.path.join(clean_data_folder, cleaned_file_categorical))
 
 clean_data.to_parquet(os.path.join(clean_data_folder, cleaned_file))
 
