@@ -18,7 +18,7 @@ required_columns = ['price', 'year', 'manufacturer', 'condition', 'cylinders', '
 
 og_data = pd.read_parquet(os.path.join(clean_data_folder, vehicles_file))
 
-column_filters = {'price': {'min': 1000, 'max': 50000, 'exclude': [], 'impute': 'median'}, 
+column_filters = {'price': {'min': 500, 'max': 70000, 'exclude': [], 'impute': 'median'}, 
                   'year': {'min': 2000, 'max': 2020, 'exclude': [], 'impute': 'median'}, 
                   'manufacturer': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
                   'condition': {'min': None, 'max': None, 'exclude': [], 'impute': None}, 
