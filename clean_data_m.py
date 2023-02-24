@@ -56,7 +56,7 @@ def take_subset(data, column, min_val=None, max_val=None, exclude_vals=None, imp
                 new_data = new_data[new_data[column] != val]
         else:
             new_data = new_data[new_data[column] != exclude_vals]
-    print(f'Filtered {column}, removed {old_length - len(data)} rows')
+    print(f'Filtered {column}, removed {old_length - len(new_data)} rows')
     return new_data
 
 print('Original number of rows:', len(data))
