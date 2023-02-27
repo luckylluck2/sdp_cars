@@ -42,7 +42,7 @@ print(''.join([f'ColName: {cars_data.columns[i]}; \tWeight: {round(pca.component
 #beetje useless dit vind ik
 # Misschien als we alleen op jaar en odometer PCA doen:
 
-pca_limited = PCA(n_components = 2).fit(X_train_transformed['odometer', 'year'])
+pca_limited = PCA(n_components = 1).fit(X_train_transformed[['odometer', 'year']])
 
 print(pca_limited.explained_variance_ratio_)
 print(pca_limited.singular_values_)
