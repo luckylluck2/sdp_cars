@@ -20,7 +20,10 @@ cars_data = pd.read_parquet(os.path.join(data_folder, recipes_file))
 cars_prices = cars_data['price']
 cars_data.drop(columns='price', inplace=True)
 
-X_train, X_test, y_train, y_test = train_test_split(cars_data, cars_prices, test_size=0.15, random_state=1)
+X_train, X_test, y_train, y_test = train_test_split(cars_data, cars_prices, 
+                                                    test_size=0.10, random_state=37)
+X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, 
+                                                    test_size=0.10/0.90, random_state=42)
 
 scaler = StandardScaler().fit(X_train)
 X_train_transformed = scaler.transform(X_train)
