@@ -99,4 +99,6 @@ og_data[required_columns].to_parquet(os.path.join(clean_data_folder, cleaned_fil
 
 clean_data.to_parquet(os.path.join(clean_data_folder, cleaned_file))
 
+# clean_data.to_csv(os.path.join(clean_data_folder,  "clean_data.csv"))
+
 print(len(clean_data))
