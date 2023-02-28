@@ -1,13 +1,20 @@
 import numpy as np
 import pandas as pd
 import os
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
+from sklearn.model_selection import train_test_split
+
 
 # Load vehicles data
 
 clean_data_folder = './data'
 vehicles_file = 'vehicles.parquet'
-cleaned_file = 'cleaned_data.parquet'
+cleaned_file_train = 'cleaned_data_train.parquet'
+cleaned_file_test = 'cleaned_data_test.parquet'
+cleaned_file_val = 'cleaned_data_val.parquet'
+cleaned_file_train_price = 'cleaned_price_train.parquet'
+cleaned_file_test_price = 'cleaned_price_test.parquet'
+cleaned_file_val_price = 'cleaned_price_val.parquet'
 cleaned_file_categorical = 'cleaned_data_categorical.parquet'
 
 odometer_cutoffPoint = 400000   #in miles
@@ -88,7 +95,7 @@ encoded = enc.transform(clean_data[categorical_columns])
 encoded_df = pd.DataFrame(encoded, columns=enc.get_feature_names_out()) 
 # encoded_df.columns.to_list()
 
-non_categorical_columns = ['price', 'year', 'odometer', 'cylinders']
+non_categorical_columns = ['price', 'year', 'odometer', 'cylinders', 'lat', 'long']
 
 #indexing went 'wrong' somewhere
 clean_data.index = encoded_df.index
@@ -97,8 +104,38 @@ clean_data = pd.concat([clean_data[non_categorical_columns].copy(), encoded_df],
 
 og_data[required_columns].to_parquet(os.path.join(clean_data_folder, cleaned_file_categorical))
 
-clean_data.to_parquet(os.path.join(clean_data_folder, cleaned_file))
+clean_data_train, clean_data_test, clean_price_train, clean_price_test = train_test_split(
+                    clean_data[clean_data.columns[1:]], clean_data['price'], 
+                    test_size=0.1, random_state=37)
+clean_data_train, clean_data_val, clean_price_train, clean_price_val = train_test_split(
+                clean_data_train, clean_price_train, 
+                test_size=0.1/0.9, random_state=42)
 
-# clean_data.to_csv(os.path.join(clean_data_folder,  "clean_data.csv"))
+non_categorical_covs = [ 'year', 'odometer', 'cylinders', 'lat', 'long']
+price_scaler = MinMaxScaler().fit(np.array(clean_price_train).reshape(-1,1))
+clean_price_train = price_scaler.transform(np.array(clean_price_train).reshape(-1,1))
+clean_price_test = price_scaler.transform(np.array(clean_price_test).reshape(-1,1))
+clean_price_val = price_scaler.transform(np.array(clean_price_val).reshape(-1,1))
 
-print(len(clean_data))
+scaler = StandardScaler().fit(clean_data_train[non_categorical_covs])
+clean_data_train[non_categorical_covs] = pd.DataFrame(scaler.transform(clean_data_train[non_categorical_covs]), columns= clean_data_train[non_categorical_covs].columns)
+clean_data_train[non_categorical_covs].index = clean_data_train[non_categorical_covs].index
+clean_data_test[non_categorical_covs]  = pd.DataFrame(scaler.transform(clean_data_test[non_categorical_covs]), columns= clean_data_test[non_categorical_covs].columns)
+clean_data_test[non_categorical_covs].index = clean_data_test[non_categorical_covs].index
+clean_data_val[non_categorical_covs]  = pd.DataFrame(scaler.transform(clean_data_val[non_categorical_covs]), columns= clean_data_val[non_categorical_covs].columns)
+clean_data_val[non_categorical_covs].index = clean_data_val[non_categorical_covs].index
+
+
+clean_data_train.to_parquet(os.path.join(clean_data_folder, cleaned_file_train))
+clean_data_test.to_parquet(os.path.join(clean_data_folder, cleaned_file_test))
+clean_data_val.to_parquet(os.path.join(clean_data_folder, cleaned_file_val))
+clean_price_train = pd.DataFrame(clean_price_train, columns = ['price'])
+clean_price_train.to_parquet(os.path.join(clean_data_folder, cleaned_file_train_price))
+clean_price_test = pd.DataFrame(clean_price_test, columns = ['price'])
+clean_price_test.to_parquet(os.path.join(clean_data_folder, cleaned_file_test_price))
+clean_price_val = pd.DataFrame(clean_price_val, columns = ['price'])
+clean_price_val.to_parquet(os.path.join(clean_data_folder, cleaned_file_val_price))
+
+
+
+print(f'train length: {len(clean_data_train)}, test length: {len(clean_data_test)}, val length: {len(clean_data_val)}.')
