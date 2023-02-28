@@ -111,19 +111,19 @@ clean_data_train, clean_data_val, clean_price_train, clean_price_val = train_tes
                 clean_data_train, clean_price_train, 
                 test_size=0.1/0.9, random_state=42)
 
-non_categorical_covs = [ 'year', 'odometer', 'cylinders', 'lat', 'long']
-price_scaler = MinMaxScaler().fit(np.array(clean_price_train).reshape(-1,1))
-clean_price_train = price_scaler.transform(np.array(clean_price_train).reshape(-1,1))
-clean_price_test = price_scaler.transform(np.array(clean_price_test).reshape(-1,1))
-clean_price_val = price_scaler.transform(np.array(clean_price_val).reshape(-1,1))
+# non_categorical_covs = [ 'year', 'odometer', 'cylinders', 'lat', 'long']
+# price_scaler = MinMaxScaler().fit(np.array(clean_price_train).reshape(-1,1))
+# clean_price_train = price_scaler.transform(np.array(clean_price_train).reshape(-1,1))
+# clean_price_test = price_scaler.transform(np.array(clean_price_test).reshape(-1,1))
+# clean_price_val = price_scaler.transform(np.array(clean_price_val).reshape(-1,1))
 
-scaler = StandardScaler().fit(clean_data_train[non_categorical_covs])
-clean_data_train[non_categorical_covs] = pd.DataFrame(scaler.transform(clean_data_train[non_categorical_covs]), columns= clean_data_train[non_categorical_covs].columns)
-clean_data_train[non_categorical_covs].index = clean_data_train[non_categorical_covs].index
-clean_data_test[non_categorical_covs]  = pd.DataFrame(scaler.transform(clean_data_test[non_categorical_covs]), columns= clean_data_test[non_categorical_covs].columns)
-clean_data_test[non_categorical_covs].index = clean_data_test[non_categorical_covs].index
-clean_data_val[non_categorical_covs]  = pd.DataFrame(scaler.transform(clean_data_val[non_categorical_covs]), columns= clean_data_val[non_categorical_covs].columns)
-clean_data_val[non_categorical_covs].index = clean_data_val[non_categorical_covs].index
+# scaler = StandardScaler().fit(clean_data_train[non_categorical_covs])
+# clean_data_train[non_categorical_covs] = pd.DataFrame(scaler.transform(clean_data_train[non_categorical_covs]), columns= clean_data_train[non_categorical_covs].columns)
+# clean_data_train[non_categorical_covs].index = clean_data_train[non_categorical_covs].index
+# clean_data_test[non_categorical_covs]  = pd.DataFrame(scaler.transform(clean_data_test[non_categorical_covs]), columns= clean_data_test[non_categorical_covs].columns)
+# clean_data_test[non_categorical_covs].index = clean_data_test[non_categorical_covs].index
+# clean_data_val[non_categorical_covs]  = pd.DataFrame(scaler.transform(clean_data_val[non_categorical_covs]), columns= clean_data_val[non_categorical_covs].columns)
+# clean_data_val[non_categorical_covs].index = clean_data_val[non_categorical_covs].index
 
 
 clean_data_train.to_parquet(os.path.join(clean_data_folder, cleaned_file_train))
