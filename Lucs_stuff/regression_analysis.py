@@ -195,11 +195,13 @@ def plot_interpretation(interpretation):
       ax = sns.barplot(df, x = 'category', y = 'value', 
                        palette = paint_color_dict,
                        edgecolor = 'black', 
-                       kwargs = {'width': np.array(interpretation[3])/max(interpretation[3])*0.8})
+                       width = np.array(interpretation[3])/max(interpretation[3])*1 + 0.05)
+      xticks = [f'({interpretation[3][i]}) {interpretation[1][i]}' for i in range(len(interpretation[1]))]
       ax.set(ylabel = 'Value (USD)', xlabel = interpretation[0])
-      for i in ax.containers:
-            print(i)
-            ax.bar_label(i, labels = interpretation[3], label_type = 'center')
+      ax.set_xticks(range(len(df['category'])), labels = xticks)
+      # for i in ax.containers:
+      #       print(i)
+      #       ax.bar_label(i, labels = interpretation[3], label_type = 'center')
       plt.xticks(rotation=90)
       plt.show()
 
@@ -207,8 +209,9 @@ price_scaler.inverse_transform(pd.DataFrame([0,1]))
 # price_scaler.
 
 print_interpretation(interpret_coefs(ridge.coef_[0], X_train.columns, price_scaler, cov_scaler, 'manufacturer', X_train))
-plot_interpretation(interpret_coefs(ridge.coef_[0], X_train.columns, price_scaler, cov_scaler, 'type', X_train))
+plot_interpretation(interpret_coefs(ridge.coef_[0], X_train.columns, price_scaler, cov_scaler, 'manufacturer', X_train))
 # print_interpretation(['Decision tree', X_train.columns, perm_imp['importances_mean']*100])
+
 
 
 
