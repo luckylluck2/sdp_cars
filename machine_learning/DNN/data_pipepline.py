@@ -5,80 +5,118 @@ from sklearn.model_selection import train_test_split
 from torch import FloatTensor
 from torch.utils.data import Dataset
 
-def timestring_to_minutes(timestring):
-    """
-    Convert the timestring in the columns 'CookTime', 'PrepTime' or 'TotalTime' to minutes.
-    Example: 'PT24H45M' -> 24 * 60 + 45
+
+class CarData():
+    def __init__(self):     
+        self.label = None
+        self.normalize_features = None
+        self.label_norm = None
+        
+        self.train_features = None
+        self.numeric_features = None
+        self.onehot_features = None
+        
+        self.categorical_features = None
+        
+        self.val_size = None
+        self.test_size = None
+        self.train_size = None
+        
+        self.means = None
+        self.stds = None
+        
+        self.train_data = None
+        self.val_data = None
+        self.test_data = None
+        
+    def load_from_df(self, data, label, normalize_features=None, val_size=0.1, test_size=0.1, label_norm='standard'):
+        self.label = label
+        self.normalize_features = normalize_features
+        self.label_norm = label_norm
+        
+        self.val_size = val_size
+        self.test_size = test_size
+        self.train_size = 1.0 - self.test_size - self.val_size
+        
+        rel_val_size = self.val_size / (1.0 - self.test_size)
+        
+        train_data, test_data = train_test_split(data, test_size=test_size, random_state=37)
+        train_data, val_data = train_test_split(train_data, test_size=rel_val_size, random_state=42)
+        
+        self.determine_feature_types(train_data)
+        self.create_datasets(train_data, val_data, test_data)
     
-    Args:
-        timestring (str): String indicating a time duration
+    def load_from_files(self, train_features_file, 
+                        train_label_file, 
+                        val_features_file, 
+                        val_label_file, 
+                        test_features_file, 
+                        test_label_file,
+                        normalize_features,
+                        label_norm='standard'):
+        train_features_data = pd.read_parquet(train_features_file)
+        train_label_data = pd.read_parquet(train_label_file)
+        val_features_data = pd.read_parquet(val_features_file)
+        val_label_data = pd.read_parquet(val_label_file)
+        test_features_data = pd.read_parquet(test_features_file)
+        test_label_data = pd.read_parquet(test_label_file)
         
-    Returns:
-        total_time (float): Number of minutes
-    """
-    if type(timestring) is str:
-        # Remove leading 'PT'
-        timestring = timestring.replace('PT', '')
+        train_data = pd.concat([train_label_data, train_features_data], axis=1)
+        val_data = pd.concat([val_features_data, val_label_data], axis=1)
+        test_data = pd.concat([test_features_data, test_label_data], axis=1)
         
-        # Determine the number of hours from the remaining string before 'H'
-        if 'H' in timestring:
-            timestring_h = timestring.split('H')
-            hours = int(timestring_h[0])
-            
-            # Consider only the part after 'H' for the minutes
-            timestring = timestring_h[1]
+        self.label = train_label_data.columns.to_list()[0]
+        print('label:', self.label)
+        self.normalize_features = normalize_features
+        self.label_norm = label_norm
+        
+        self.determine_feature_types(train_data)
+        self.create_datasets(train_data, val_data, test_data)
+        
+    def determine_feature_types(self, data):
+        self.train_features = [col for col in data.columns.to_list() if col != self.label]
+        if self.normalize_features is not None:
+            self.numeric_features = [col for col in self.train_features if col in self.normalize_features]
         else:
-            hours = 0
-            
-        # Determine the number of minutes from the remaining string before 'M'
-        if 'M' in timestring:
-            minutes = int(timestring.split('M')[0])
-        else:
-            minutes = 0
+            self.numeric_features = []
+        self.onehot_features = [col for col in self.train_features if col not in self.numeric_features]
+        self.categorical_features = list(set(['_'.join(col.split('_')[:-1]) for col in self.onehot_features]))
         
-        # Calculate the total time duration in minutes
-        total_time = hours * 60 + minutes
-        return total_time
-    else:
-        return None
+    def create_datasets(self, train_data, val_data, test_data):
+        if self.normalize_features is not None:
+            self.means = train_data[self.normalize_features].mean()
+            self.stds = train_data[self.normalize_features].std()
+            
+        train_data = self.car_ml_data_pipeline(train_data)
+        val_data = self.car_ml_data_pipeline(val_data)
+        test_data = self.car_ml_data_pipeline(test_data)
+        
+        self.train_data = CarDataset(train_data)
+        self.val_data = CarDataset(val_data)
+        self.test_data = CarDataset(test_data)
+        
+    def car_ml_data_pipeline(self, data):
+        if self.normalize_features is not None:
+            data[self.normalize_features] = (data[self.normalize_features] - self.means) / self.stds
+        
+        if self.label_norm == 'standard':
+            data[self.label] = (data[self.label] - data[self.label].mean()) / data[self.label].std()
+        elif self.label_norm == 'min_max':
+            data[self.label] = (data[self.label] - data[self.label].min()) / (data[self.label].max() - data[self.label].min())
+        else:
+            raise ValueError(f'Unknown label normalization: {self.label_norm}')
+        
+        # Select features and label
+        X = data.drop(columns=[self.label]).copy().to_numpy()
+        y = data[[self.label]].copy().to_numpy()
+            
+        dataset = [(X[i], y[i]) for i in range(len(X))]
+        return dataset
 
-def recipes_data_pipeline(cleaned_data_file, train=True):
-    data = pd.read_parquet(cleaned_data_file)
-    X = data[['CookTime', 'PrepTime', 'CaloriesPDV', 'FatPDV', 
-              'SaturatedFatPDV', 'CholesterolPDV', 'SodiumPDV', 
-              'CarbohydratePDV', 'FiberPDV', 'SugarPDV', 'ProteinPDV']].to_numpy()
-    y = data[['AggregatedRating', 'ReviewCount']].to_numpy()
-    
-    n_rows = len(X)
-    
-    X_mean = np.mean(X, axis=0)
-    X_std = np.std(X, axis=0)
-    X = (X - X_mean) / X_std
-    
-    prior_rating = 3.0
-    prior_weight = 5.0
-    y_bayes = ((prior_rating * prior_weight) + (y[:, 0] * y[:, 1])) / (y[:, 1] + prior_weight)
-    
-    y = np.array([y_bayes <= 2.0, (2.0 < y_bayes) & (y_bayes < 4.0), y_bayes >= 4.0]).astype(int).T
-    # condlist = np.array([y_bayes <= 2.0, (2.0 < y_bayes) & (y_bayes < 4.0), y_bayes >= 4.0]).astype(int)
-    # encodings = [np.tile(np.array([1, 0, 0]), (n_rows, 1)), 
-    #              np.tile(np.array([0, 1, 0]), (n_rows, 1)), 
-    #              np.tile(np.array([0, 0, 1]), (n_rows, 1))]
-    # encodings = [np.array([1, 0, 0]), np.array([0, 1, 0]), np.array([0, 0, 1])]
-    # y = np.choose(condlist, encodings)
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
-    
-    if train:
-        dataset = [(X_train[i], y_train[i]) for i in range(len(X_train))]
-    else:
-        dataset = [(X_test[i], y_test[i]) for i in range(len(X_test))]
-    return dataset
-
-class FoodDataset(Dataset):
-    def __init__(self, data_file, train=True):
-        self.dataset = recipes_data_pipeline(data_file, train=train)
-
+class CarDataset(Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+        
     def __len__(self):
         return len(self.dataset)
 
