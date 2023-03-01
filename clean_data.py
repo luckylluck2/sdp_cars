@@ -153,9 +153,8 @@ clean_data_train, clean_data_val, clean_price_train, clean_price_val = train_tes
 
 for dataset in [clean_data_train, clean_price_train, clean_data_val, 
                 clean_price_val, clean_data_test, clean_price_test]:
-    dataset.reset_index(inplace=True)
-
-print(clean_price_train)
+    print(dataset)
+    dataset.reset_index(inplace=True, drop=True)
 
 # non_categorical_covs = [ 'year', 'odometer', 'cylinders', 'lat', 'long']
 # price_scaler = MinMaxScaler().fit(np.array(clean_price_train).reshape(-1,1))
@@ -170,13 +169,6 @@ print(clean_price_train)
 # clean_data_test[non_categorical_covs].index = clean_data_test[non_categorical_covs].index
 # clean_data_val[non_categorical_covs]  = pd.DataFrame(scaler.transform(clean_data_val[non_categorical_covs]), columns= clean_data_val[non_categorical_covs].columns)
 # clean_data_val[non_categorical_covs].index = clean_data_val[non_categorical_covs].index
-
-clean_data_train.index = range(len(clean_price_train))
-clean_data_test.index = range(len(clean_price_test))
-clean_data_val.index = range(len(clean_price_val))
-clean_price_train.index = range(len(clean_price_train))
-clean_price_test.index = range(len(clean_price_test))
-clean_price_val.index = range(len(clean_price_val))
 
 clean_data_train.to_parquet(os.path.join(clean_data_folder, cleaned_file_train))
 clean_data_test.to_parquet(os.path.join(clean_data_folder, cleaned_file_test))
