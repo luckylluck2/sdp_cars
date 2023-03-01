@@ -11,7 +11,7 @@ from sklearn.decomposition import PCA
 
 # Load recipes data
 
-data_folder = './data'
+data_folder = '../data'
 recipes_file = 'cleaned_data.parquet'
 
 cars_data = pd.read_parquet(os.path.join(data_folder, recipes_file))

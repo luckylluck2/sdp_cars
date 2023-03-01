@@ -11,7 +11,7 @@ from sklearn.metrics import mean_squared_error
 
 # Load recipes data
 
-data_folder = './data'
+data_folder = '../data'
 cars_data_train = 'cleaned_data_train.parquet'
 cars_data_test = 'cleaned_data_test.parquet'
 cars_data_val = 'cleaned_data_val.parquet'
@@ -151,22 +151,25 @@ output_string = [(f'{(ridge.coef_[0][i]*price_scaler.scale_)[0]: .2f}'+ ' ' + X_
 print('\n'.join(output_string))
 
 
-def interpret_numeric_coefs(coefs, names, price_scalar, feature_scalar):
-      numeric_scales   = (lambda numeric_coef : (np.array(numeric_coef)/feature_scalar.scale_[:3])*
+def interpret_numeric_coefs(coefs, names, price_scalar, feature_scalar, train_data):
+      numeric_scales   = (lambda numeric_coef : (np.array(numeric_coef)/feature_scalar.scale_[:3])/
                           price_scalar.scale_) # length-3 input
       
-      return(['Numeric', names[:3], numeric_scales(coefs[:3])])
+      return(['Numeric', names[:3], numeric_scales(coefs[:3]), len(train_data)])
 
-def interpret_coefs(coefs, names, price_scalar, feature_scalar, substring):
+def interpret_coefs(coefs, names, price_scalar, feature_scalar, substring, train_data):
       #assumes coefs and prices are scaled.
-      indicator_transform = (lambda indicator : price_scalar.scale_ * np.array(indicator))
+      indicator_transform = (lambda indicator : np.array(indicator)/price_scalar.scale_)
       
       indicator_cols = [names[i].__contains__(substring) for i in range(len(names))]
 
+      sample_counts = [sum(train_data[name] == 1) for name in names[indicator_cols]]
+      
       interpret_indicators = [substring.capitalize(), 
                               np.char.replace(names.to_numpy(dtype = 'str')[indicator_cols], 
                                               old = substring + '_', new = ''), 
-                              indicator_transform(coefs[indicator_cols])]
+                              indicator_transform(coefs[indicator_cols]),
+                              sample_counts]
       
       return (interpret_indicators)
 
@@ -186,16 +189,25 @@ def plot_interpretation(interpretation):
       df = pd.DataFrame()
       df['value'] = interpretation[2]
       df['category'] = interpretation[1]
+      
+      sns.set(rc = {'figure.figsize': (8,8)})
       sns.set_context(rc = {'patch.linewidth': 0.6})
       ax = sns.barplot(df, x = 'category', y = 'value', 
                        palette = paint_color_dict,
-                       edgecolor = 'black')
+                       edgecolor = 'black', 
+                       kwargs = {'width': np.array(interpretation[3])/max(interpretation[3])*0.8})
       ax.set(ylabel = 'Value (USD)', xlabel = interpretation[0])
+      for i in ax.containers:
+            print(i)
+            ax.bar_label(i, labels = interpretation[3], label_type = 'center')
       plt.xticks(rotation=90)
       plt.show()
 
-# print_interpretation(interpret_coefs(ridge.coef_[0], X_train.columns, price_scaler, cov_scaler, 'manufacturer'))
-# plot_interpretation(interpret_coefs(ridge.coef_[0], X_train.columns, price_scaler, cov_scaler, 'manufacturer'))
+price_scaler.inverse_transform(pd.DataFrame([0,1]))
+# price_scaler.
+
+print_interpretation(interpret_coefs(ridge.coef_[0], X_train.columns, price_scaler, cov_scaler, 'manufacturer', X_train))
+plot_interpretation(interpret_coefs(ridge.coef_[0], X_train.columns, price_scaler, cov_scaler, 'type', X_train))
 # print_interpretation(['Decision tree', X_train.columns, perm_imp['importances_mean']*100])
 
 
@@ -210,7 +222,9 @@ categories = ['manufacturer', 'condition', 'fuel',
 
 for category in categories:
       print(category)
-      cat_interpretation = interpret_numeric_coefs(ridge.coef_[0], X_train.columns, price_scaler, cov_scaler) if category == 'numeric' else interpret_coefs(ridge.coef_[0], X_train.columns, price_scaler, cov_scaler, category)
+      cat_interpretation = interpret_numeric_coefs(
+            ridge.coef_[0], X_train.columns, price_scaler, cov_scaler, X_train) if category == 'numeric' else interpret_coefs(
+                  ridge.coef_[0], X_train.columns, price_scaler, cov_scaler, category, X_train)
       # print(cat_interpretation)
       print(f'Total weight category (Ridge): {np.sum(np.abs(cat_interpretation[2]))/259556.6*100}')
       foo = np.sum(perm_imp['importances_mean'] * [X_train.columns[i].__contains__(category) for i in range(len(X_train.columns))])
