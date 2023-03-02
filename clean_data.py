@@ -153,7 +153,6 @@ clean_data_train, clean_data_val, clean_price_train, clean_price_val = train_tes
 
 for dataset in [clean_data_train, clean_price_train, clean_data_val, 
                 clean_price_val, clean_data_test, clean_price_test]:
-    print(dataset)
     dataset.reset_index(inplace=True, drop=True)
 
 # non_categorical_covs = [ 'year', 'odometer', 'cylinders', 'lat', 'long']
