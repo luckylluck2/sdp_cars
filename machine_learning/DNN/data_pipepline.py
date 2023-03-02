@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split
 
 from torch import FloatTensor
@@ -22,8 +21,12 @@ class CarData():
         self.test_size = None
         self.train_size = None
         
-        self.means = None
-        self.stds = None
+        self.feature_means = None
+        self.feature_stds = None
+        self.label_mean= None
+        self.label_std = None
+        self.label_max = None
+        self.label_min = None
         
         self.train_data = None
         self.val_data = None
@@ -44,6 +47,7 @@ class CarData():
         train_data, val_data = train_test_split(train_data, test_size=rel_val_size, random_state=42)
         
         self.determine_feature_types(train_data)
+        self.set_normalization_params(train_data)
         self.create_datasets(train_data, val_data, test_data)
     
     def load_from_files(self, train_features_file, 
@@ -65,12 +69,12 @@ class CarData():
         val_data = pd.concat([val_features_data, val_label_data], axis=1)
         test_data = pd.concat([test_features_data, test_label_data], axis=1)
         
-        self.label = train_label_data.columns.to_list()[0]
-        print('label:', self.label)
+        self.label = train_data.columns.to_list()[0]
         self.normalize_features = normalize_features
         self.label_norm = label_norm
         
         self.determine_feature_types(train_data)
+        self.set_normalization_params(train_data)
         self.create_datasets(train_data, val_data, test_data)
         
     def determine_feature_types(self, data):
@@ -81,12 +85,18 @@ class CarData():
             self.numeric_features = []
         self.onehot_features = [col for col in self.train_features if col not in self.numeric_features]
         self.categorical_features = list(set(['_'.join(col.split('_')[:-1]) for col in self.onehot_features]))
-        
-    def create_datasets(self, train_data, val_data, test_data):
+    
+    def set_normalization_params(self, train_data):
         if self.normalize_features is not None:
-            self.means = train_data[self.normalize_features].mean()
-            self.stds = train_data[self.normalize_features].std()
+            self.feature_means = train_data[self.normalize_features].mean()
+            self.feature_stds = train_data[self.normalize_features].std()
             
+        self.label_mean = train_data[self.label].mean()
+        self.label_std =  train_data[self.label].std()
+        self.label_min = train_data[self.label].min()
+        self.label_max = train_data[self.label].max()
+    
+    def create_datasets(self, train_data, val_data, test_data):                    
         train_data = self.car_ml_data_pipeline(train_data)
         val_data = self.car_ml_data_pipeline(val_data)
         test_data = self.car_ml_data_pipeline(test_data)
@@ -97,12 +107,12 @@ class CarData():
         
     def car_ml_data_pipeline(self, data):
         if self.normalize_features is not None:
-            data[self.normalize_features] = (data[self.normalize_features] - self.means) / self.stds
+            data[self.normalize_features] = (data[self.normalize_features] - self.feature_means) / self.feature_stds
         
         if self.label_norm == 'standard':
-            data[self.label] = (data[self.label] - data[self.label].mean()) / data[self.label].std()
+            data[self.label] = (data[self.label] - self.label_mean) / self.label_std
         elif self.label_norm == 'min_max':
-            data[self.label] = (data[self.label] - data[self.label].min()) / (data[self.label].max() - data[self.label].min())
+            data[self.label] = (data[self.label] - self.label_min) / (self.label_max - self.label_min)
         else:
             raise ValueError(f'Unknown label normalization: {self.label_norm}')
         

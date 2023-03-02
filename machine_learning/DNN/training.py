@@ -46,23 +46,28 @@ def MAPELoss(output, target):
 
 
 def train_model(model, model_save_dir, train_dataset, val_dataset=None, num_epochs=40, lr=1e-4, 
-                early_stopping_threshold=10, l2=1e-4):
+                early_stopping_threshold=10, l2=1e-4, loss_function='MSE'):
     model_parameters_path = os.path.join(model_save_dir, 'model_parameters')
     if not os.path.exists(model_save_dir):
         os.mkdir(model_save_dir)
 
-    criterion = MSELoss()
-    # criterion = MAPELoss()   
-    # criterion = CrossEntropyLoss(reduction='sum')
+    if loss_function == 'MSE':
+        criterion = MSELoss()
+    elif loss_function == 'MAPE':
+        criterion = MAPELoss()
+    else:
+        raise ValueError(f'Unknown loss function: {loss_function}')
     optimizer = optim.Adam([{'params': model.parameters()}], lr=lr, weight_decay=l2)
 
     min_loss = np.inf
     epochs_without_improvement = 0
+    losses = {'train': [], 'val': []}
 
     for epoch in range(num_epochs):
         for mode, dataset in zip(['train', 'val'], [train_dataset, val_dataset]):
             if dataset is not None:
                 loss = step(dataset, model, optimizer, criterion, epoch, mode)
+                losses[mode].append(loss)
         
         # Prevent printing of progress bars from messing up
         print(' ')
@@ -81,3 +86,4 @@ def train_model(model, model_save_dir, train_dataset, val_dataset=None, num_epoc
         if epochs_without_improvement >= early_stopping_threshold:
             print(f'Early stopping after {epoch} epochs')
             break
+    return losses
