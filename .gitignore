@@ -134,3 +134,9 @@ data/
 
 # data exploration
 explore_data.ipynb
+
+# image results
+*.png
+
+# dnn models
+machine_learning/DNN/models/
